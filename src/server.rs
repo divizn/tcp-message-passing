@@ -46,13 +46,13 @@ fn handle_connection(mut stream: TcpStream, addr: SocketAddr, connections: Arc<M
         match stream.read(&mut buffer) {
             Ok(0) => {println!("Connection has been closed by {addr}"); break},
             Ok(n) => {
-                let inp = &buffer[0..n].to_ascii_lowercase();
-                // Handle the data (e.g., echo it back)
+                let inp = &buffer[0..n];
+                let out = addr.to_string() + ": " + &String::from_utf8(inp.to_vec()).expect("Could not convert to string");
                 println!("Received {inp:?} from {addr}");
                 let streams = connections.lock().expect("Unable to lock streams");
-                for mut stream in streams.iter() {
-                    if stream.peer_addr().unwrap() != addr {
-                        stream.write_all(&buffer[0..n]).unwrap();
+                for mut connection in streams.iter() {
+                    if connection.peer_addr().unwrap() != addr {
+                        connection.write_all(out.as_bytes()).unwrap();
                     }
                 }
             }
