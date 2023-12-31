@@ -30,6 +30,11 @@ fn main() {
 
     loop {
         match stream.read(&mut buf) {
+        Ok(0) => {
+            println!("Server closed connection");
+            break
+        },
+
         Ok(n) => {
             let message: String = String::from_utf8(buf[0..n].to_vec()).unwrap();
             
