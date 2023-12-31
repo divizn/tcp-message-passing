@@ -3,21 +3,24 @@ use std::env::args;
 use std::net::{TcpListener, TcpStream, SocketAddr};
 use std::sync::{Arc, Mutex};
 use std::thread;
+use std::net::Ipv4Addr;
 
 const PORT: &str = "6969";
 
-
 fn main() {
-    let ip = args().nth(1).unwrap() + ":" + PORT;
 
-    println!("{ip}");
+    let ip = get_ip();
+
+    println!("Creating socket at: {ip}");
 
     let connections: Arc<Mutex<Vec<TcpStream>>> = Arc::new(Mutex::new(Vec::new()));
 
-    let server = match TcpListener::bind(ip) {
+    let server = match TcpListener::bind(&ip) {
         Ok(server) => server,
-        Err(eip) => panic!("Incorrect socket address configuration! Please change IP, current IP {eip}")
+        Err(eip) => panic!("Incorrect socket address configuration! Please change IP: {eip}")
     };
+
+    println!("Listening at {ip}");
 
     for connection in server.incoming() {
         match connection {
@@ -68,4 +71,34 @@ fn handle_connection(mut stream: TcpStream, addr: SocketAddr, connections: Arc<M
             stream.peer_addr().expect("unable to get client address") != addr
         })
     }
+}
+
+fn get_ip() -> String {
+    let args: Vec<String> = args().collect();
+    let mut ip: String;
+
+    if let Some(arg_ip) = args.get(1) {
+        if let Ok(ip_addr) = arg_ip.parse::<Ipv4Addr>() {
+            ip = ip_addr.to_string() + ":"
+        } else {
+            println!("Invalid IPv4 address provided, using 127.0.0.1");
+            ip = String::from("127.0.0.1:")
+        }
+    } else {
+        println!("No IPv4 address provided, using 127.0.0.1");
+        ip = String::from("127.0.0.1:");
+    }
+    
+    if let Some(arg_port) = args.get(2) {
+        if let Ok(port_number) = arg_port.parse::<u16>() {
+            ip = ip + &port_number.to_string();
+        } else {
+            ip = ip + PORT;
+            println!("Invalid port number provided, using 6969");
+        }
+    } else {
+        ip = ip + PORT;
+        println!("No port number provided, using 6969");
+    }
+    ip
 }
