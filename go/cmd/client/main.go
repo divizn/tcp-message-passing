@@ -41,7 +41,10 @@ func handleInput(conn net.Conn, wg *sync.WaitGroup) {
 		if err != nil {
 			continue
 		}
-		conn.Write([]byte(inp))
+		_, err = conn.Write([]byte(inp))
+		if err != nil {
+			fmt.Println("Error writing to server", err)
+		}
 	}
 }
 
