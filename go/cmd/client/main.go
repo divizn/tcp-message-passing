@@ -9,6 +9,8 @@ import (
 	"sync"
 )
 
+// TODO: Get IP and port from args
+
 func main() {
 	var wg sync.WaitGroup
 	wg.Add(2)
