@@ -6,13 +6,8 @@ import (
 	"sync"
 )
 
-// func sendMessage(msg string, ch chan string) {
-// 	ch <- msg // Send message to the channel
-// }
-
 /**
  * TODO: channel for user input to send to tcp stream
- * TODO: channel for messages received from stream
  */
 
 func main() {
