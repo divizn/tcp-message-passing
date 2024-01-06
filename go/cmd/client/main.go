@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"sync"
@@ -51,6 +52,10 @@ func readStream(conn net.Conn, wg *sync.WaitGroup) {
 	for {
 		n, err := conn.Read(buff)
 		if err != nil {
+			if err == io.EOF {
+				fmt.Println("Server closed connection")
+				return
+			}
 			fmt.Println("Error reading message from server:", err)
 			return
 		}
