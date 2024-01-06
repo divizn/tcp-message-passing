@@ -49,9 +49,13 @@ fn handle_connection(mut stream: TcpStream, addr: SocketAddr, connections: Arc<M
         match stream.read(&mut buffer) {
             Ok(0) => {println!("Connection has been closed by {addr}"); break},
             Ok(n) => {
-                let inp = &buffer[0..n];
+                if buffer[0] == 10 && n == 1 { continue }
+                let mut inp = &buffer[0..n];
+                println!("Received {inp:?} from {addr}"); 
+                if inp[n-1] == 10 { inp = inp.strip_suffix(&[10]).unwrap()}
+                println!("Sending {inp:?} from {addr}");
                 let out = addr.to_string() + ": " + &String::from_utf8(inp.to_vec()).expect("Could not convert to string");
-                println!("Received {inp:?} from {addr}");
+                
                 let streams = connections.lock().expect("Unable to lock streams");
                 for mut connection in streams.iter() {
                     if connection.peer_addr().unwrap() != addr {
@@ -67,8 +71,8 @@ fn handle_connection(mut stream: TcpStream, addr: SocketAddr, connections: Arc<M
     }
 
     {
-        connections.lock().unwrap().retain(|stream| {
-            stream.peer_addr().expect("unable to get client address") != addr
+        connections.lock().unwrap().retain(|streams| {
+            addr != streams.peer_addr().expect("Could not retrieve peer address") // temp fix?
         })
     }
 }
