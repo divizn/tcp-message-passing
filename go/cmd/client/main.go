@@ -23,8 +23,6 @@ func main() {
 
 	fmt.Println("Connected to server at:", conn.RemoteAddr())
 
-	message := "hello"
-	_, err = conn.Write([]byte(message))
 	if err != nil {
 		fmt.Println("Error sending message:", err)
 		return
