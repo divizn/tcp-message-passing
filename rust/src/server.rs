@@ -53,13 +53,14 @@ fn handle_connection(mut stream: TcpStream, addr: SocketAddr, connections: Arc<M
                 let mut inp = &buffer[0..n];
                 println!("Received {inp:?} from {addr}"); 
                 if inp[n-1] == 10 { inp = inp.strip_suffix(&[10]).unwrap()}
-                println!("Sending {inp:?} from {addr}");
-                let out = addr.to_string() + ": " + &String::from_utf8(inp.to_vec()).expect("Could not convert to string");
-                
+
+                let out_str = addr.to_string() + ": " + &String::from_utf8(inp.to_vec()).expect("Could not convert to string");
+                let out = out_str.as_bytes();
+                println!("Sending {out:?} from {addr}");
                 let streams = connections.lock().expect("Unable to lock streams");
                 for mut connection in streams.iter() {
                     if connection.peer_addr().unwrap() != addr {
-                        connection.write_all(out.as_bytes()).unwrap();
+                        connection.write_all(out).unwrap();
                     }
                 }
             }
