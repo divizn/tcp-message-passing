@@ -1,14 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"net"
+	"os"
 	"sync"
 )
-
-/**
- * TODO: channel for user input to send to tcp stream
- */
 
 func main() {
 	var wg sync.WaitGroup
@@ -35,8 +33,14 @@ func main() {
 
 func handleInput(conn net.Conn, wg *sync.WaitGroup) {
 	defer wg.Done()
+
+	ioBuffer := bufio.NewReader(os.Stdin)
 	for {
-		// TODO: Read stdin and write to stream
+		inp, err := ioBuffer.ReadString('\n')
+		if err != nil {
+			continue
+		}
+		conn.Write([]byte(inp))
 	}
 }
 
