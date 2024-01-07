@@ -7,12 +7,13 @@ use std::thread;
 
 fn main() {
     let server_addr = args().nth(1).expect("Please provide server IP");
-    println!("{server_addr}");
-
+    
     let mut buf: [u8; 256] = [0; 256];
     let mut stream = TcpStream::connect(&server_addr).expect("Failed to connect");
     let mut input_stream = stream.try_clone().expect("Failed to clone socket");
     
+    println!("Connected to server at: {server_addr}");    
+
     thread::spawn(move || { 
         loop {
             let mut input = String::new();
