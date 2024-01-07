@@ -4,22 +4,25 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
+	"strconv"
+	"strings"
 	"sync"
 )
-
-// TODO: Get IP and port from args
 
 func main() {
 	var wg sync.WaitGroup
 
+	var ip = get_ip()
+	fmt.Println(ip)
 	var connections []net.Conn
 
-	stream, err := net.Listen("tcp", "127.0.0.1:6969")
+	stream, err := net.Listen("tcp", ip)
 	if err != nil {
 		fmt.Println("Error initialising server:", err)
 		return
 	}
-	fmt.Println("Listening at 127.0.0.1:6969")
+	fmt.Println("Listening at", ip)
 	defer stream.Close()
 
 	for {
@@ -93,4 +96,40 @@ func generateOutput(n int, buffer []byte, conn net.Conn) ([]byte, bool) {
 		output = append(output, buffer[:n]...)
 	}
 	return output, true
+}
+
+func get_ip() string {
+	var ip []string // socket not ip
+	var args = os.Args[1:]
+
+	if len(args) > 0 {
+		addr := net.ParseIP(args[0])
+		if addr != nil && addr.To4() != nil {
+			ip = append(ip, addr.String())
+		} else {
+			fmt.Println("Invalid IPv4 address provided, using 127.0.0.1")
+			ip = append(ip, "127.0.0.1")
+		}
+	} else {
+		fmt.Println("No arguments have been passed, using 127.0.0.1:8000")
+		ip = append(ip, "127.0.0.1:6969")
+	}
+
+	if len(args) > 1 {
+		if len(args) > 1 {
+			port, err := strconv.Atoi(args[1])
+			if err == nil && port >= 2000 && port <= 65535 { // 2000 because others are reserved (prob)
+				ip = append(ip, ":"+args[1])
+			} else {
+				fmt.Println("Invalid port number provided, using 6969")
+				ip = append(ip, ":6969")
+			}
+		} else {
+			fmt.Println("No port number provided, using 6969")
+			ip = append(ip, ":6969")
+		}
+	}
+
+	return string(strings.Join(ip, ""))
+
 }
