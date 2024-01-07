@@ -10,12 +10,17 @@ import (
 	"sync"
 )
 
+type connectionManager struct {
+	connections []net.Conn
+	mux         sync.Mutex
+}
+
 func main() {
 	var wg sync.WaitGroup
 
 	var ip = get_ip()
 	fmt.Println(ip)
-	var connections []net.Conn
+	cm := &connectionManager{}
 
 	stream, err := net.Listen("tcp", ip)
 	if err != nil {
@@ -31,14 +36,16 @@ func main() {
 			fmt.Println("Error accepting a connection:", err)
 			continue
 		}
-		connections = append(connections, conn)
+		cm.mux.Lock()
+		cm.connections = append(cm.connections, conn)
 		wg.Add(1)
-		go handleConnection(conn, &wg, &connections)
+		cm.mux.Unlock()
+		go handleConnection(conn, &wg, cm)
 
 	}
 }
 
-func handleConnection(conn net.Conn, wg *sync.WaitGroup, connections *[]net.Conn) {
+func handleConnection(conn net.Conn, wg *sync.WaitGroup, cm *connectionManager) {
 	defer wg.Done()
 	fmt.Println("Accepted connection from:", conn.RemoteAddr())
 
@@ -49,16 +56,18 @@ func handleConnection(conn net.Conn, wg *sync.WaitGroup, connections *[]net.Conn
 		if err != nil {
 			if err == io.EOF {
 				fmt.Println("Connection has been closed by", conn.RemoteAddr())
-				// for i, connection := range *connections {
-				// 	if connection.RemoteAddr() != conn.RemoteAddr() {
-				// 		*connections = append((*connections)[:i], (*connections)[i+1:]...)
-				// 	}
-				// }
-				// TODO: Remove conn from connections[]
-				return
+			} else {
+				fmt.Println("Error on connection:", conn.RemoteAddr(), ",", err, ". Closing connection.")
 			}
-			fmt.Println("Error on connection:", conn.RemoteAddr(), ",", err, ". Closing connection.")
-			// TODO: Remove conn from connections[]
+			var updatedConnections []net.Conn
+			cm.mux.Lock()
+			for _, connection := range cm.connections {
+				if connection.RemoteAddr() != conn.RemoteAddr() {
+					updatedConnections = append(updatedConnections, connection)
+				}
+			}
+			cm.connections = updatedConnections
+			cm.mux.Unlock()
 			return
 		}
 		fmt.Println("Received", buffer[:n], "from", conn.RemoteAddr())
@@ -68,7 +77,7 @@ func handleConnection(conn net.Conn, wg *sync.WaitGroup, connections *[]net.Conn
 				continue
 			}
 			fmt.Println("Sending", out, "from", conn.RemoteAddr())
-			for _, connection := range *connections {
+			for _, connection := range cm.connections {
 				if conn.RemoteAddr() != connection.RemoteAddr() {
 					_, err = connection.Write(out)
 					if err != nil {
@@ -87,7 +96,7 @@ func generateOutput(n int, buffer []byte, conn net.Conn) ([]byte, bool) {
 	}
 
 	var output []byte
-	addr := []byte(conn.RemoteAddr().String() + ": ")
+	addr := []byte(conn.RemoteAddr().String() + ": ") // read so lock not needed
 
 	output = append(output, addr...)
 	if buffer[n] == 10 || buffer[n-1] == 10 {
