@@ -9,13 +9,20 @@ import (
 	"sync"
 )
 
-// TODO: Get IP and port from args
-
 func main() {
+	var ip string
+
+	if len(os.Args) > 1 {
+		ip = os.Args[1]
+	} else {
+		fmt.Println("No IP provided")
+		return
+	}
+
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	conn, err := net.Dial("tcp", "127.0.0.1:6969")
+	conn, err := net.Dial("tcp", ip)
 	if err != nil {
 		fmt.Println("Error connecting to server: ", err)
 	}
