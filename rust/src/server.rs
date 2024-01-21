@@ -28,7 +28,7 @@ fn main() {
                 let addr = stream.peer_addr().expect("Unable to read peer address");
                 let connections_clone = Arc::clone(&connections);
                 thread::spawn(move || {
-                    handle_connection(stream, addr, connections_clone);
+                    handle_connection(stream, addr, &connections_clone);
                 }); //maybe rc with all streams so i can send message from one to all
             },
             Err(e) => panic!("{e}"),
@@ -37,7 +37,7 @@ fn main() {
 
 }
 
-fn handle_connection(mut stream: TcpStream, addr: SocketAddr, connections: Arc<Mutex<Vec<TcpStream>>>) {
+fn handle_connection(mut stream: TcpStream, addr: SocketAddr, connections: &Arc<Mutex<Vec<TcpStream>>>) {
     println!("Accepted connection from: {addr}");
 
     {
@@ -65,7 +65,7 @@ fn handle_connection(mut stream: TcpStream, addr: SocketAddr, connections: Arc<M
                 }
             }
             Err(e) => {
-                eprintln!("Error reading from socket: {}", e);
+                eprintln!("Error reading from socket: {e}");
                 break;
             }
         }
@@ -74,7 +74,7 @@ fn handle_connection(mut stream: TcpStream, addr: SocketAddr, connections: Arc<M
     {
         connections.lock().unwrap().retain(|streams| {
             addr != streams.peer_addr().expect("Could not retrieve peer address") // temp fix?
-        })
+        });
     }
 }
 
@@ -84,10 +84,10 @@ fn get_ip() -> String {
 
     if let Some(arg_ip) = args.get(1) {
         if let Ok(ip_addr) = arg_ip.parse::<Ipv4Addr>() {
-            ip = ip_addr.to_string() + ":"
+            ip = ip_addr.to_string() + ":";
         } else {
             println!("Invalid IPv4 address provided, using 127.0.0.1");
-            ip = String::from("127.0.0.1:")
+            ip = String::from("127.0.0.1:");
         }
     } else {
         println!("No IPv4 address provided, using 127.0.0.1");
@@ -96,13 +96,13 @@ fn get_ip() -> String {
     
     if let Some(arg_port) = args.get(2) {
         if let Ok(port_number) = arg_port.parse::<u16>() {
-            ip = ip + &port_number.to_string();
+            ip += &port_number.to_string();
         } else {
-            ip = ip + PORT;
+            ip += PORT;
             println!("Invalid port number provided, using 6969");
         }
     } else {
-        ip = ip + PORT;
+        ip += PORT;
         println!("No port number provided, using 6969");
     }
     ip

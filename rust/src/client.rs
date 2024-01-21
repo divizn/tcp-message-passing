@@ -21,7 +21,7 @@ fn main() {
                 Ok(0) => break,
                 
                 Ok(_) => {
-                    input_stream.write(input.as_bytes()).expect("Failed to read buffer to stream");
+                    input_stream.write_all(input.as_bytes()).expect("Failed to read buffer to stream");
                     input.clear();
                 },
                 
