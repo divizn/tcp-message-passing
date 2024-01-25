@@ -19,13 +19,25 @@ func main() {
 	var wg sync.WaitGroup
 
 	var ip = get_ip()
-	fmt.Println(ip)
+
 	cm := &connectionManager{}
 
 	stream, err := net.Listen("tcp", ip)
 	if err != nil {
-		fmt.Println("Error initialising server:", err)
-		return
+		curr_ip := strings.Split(ip, ":")
+		ip = ""
+		ip += curr_ip[0] + ":"
+		port, err := strconv.Atoi(curr_ip[1])
+		if err != nil {
+			fmt.Println("Port is invalid:", err)
+		}
+		port += 1
+		ip += strconv.Itoa(port)
+		stream, err = net.Listen("tcp", ip)
+		if err != nil {
+			fmt.Println("Error initialising server, maybe try another port\n", err)
+			return
+		}
 	}
 	fmt.Println("Listening at", ip)
 	defer stream.Close()
@@ -120,7 +132,7 @@ func get_ip() string {
 			ip = append(ip, "127.0.0.1")
 		}
 	} else {
-		fmt.Println("No arguments have been passed, using 127.0.0.1:8000")
+		fmt.Println("No arguments have been passed, using 127.0.0.1:6969")
 		ip = append(ip, "127.0.0.1:6969")
 	}
 
