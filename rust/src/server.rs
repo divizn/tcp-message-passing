@@ -34,7 +34,7 @@ fn main() {
                     println!("Listening at {new_ip}");
                     server
                 },
-                Err(e) => panic!("Error creating socket: {e}")
+                Err(e) => panic!("Error creating socket, maybe try another port\n{e}")
             }
         }
     };
