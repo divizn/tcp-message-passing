@@ -16,11 +16,28 @@ fn main() {
     let connections: Arc<Mutex<Vec<TcpStream>>> = Arc::new(Mutex::new(Vec::new()));
 
     let server = match TcpListener::bind(&ip) {
-        Ok(server) => server,
-        Err(eip) => panic!("Incorrect socket address configuration! Please change IP: {eip}")
-    };
+        Ok(server) => {
+            println!("Listening at {ip}");
+            server
+        },
+        Err(_) => {
+            println!("Could not create a socket at {ip}, trying a different port");
+            let mut new_ip: String;
+            let port: usize;
+            new_ip = ip.split(":").next().expect("IP is invalid").to_string() + ":"; 
+            port = ip.split(":").nth(1).expect("Port is invalid").parse::<usize>().expect("Port is not a number") + 1; // TODO: could check if port is max number and then try port - 1 instead
+            new_ip += port.to_string().as_str();
 
-    println!("Listening at {ip}");
+            println!("Creating socket at: {new_ip}");
+            match TcpListener::bind(&new_ip) {
+                Ok(server) => {
+                    println!("Listening at {new_ip}");
+                    server
+                },
+                Err(e) => panic!("Error creating socket: {e}")
+            }
+        }
+    };
 
     for connection in server.incoming() {
         match connection {
