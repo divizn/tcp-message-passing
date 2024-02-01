@@ -5,9 +5,47 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::net::Ipv4Addr;
 
+
+use sysinfo::System;
+
+const GIGABYTE: f32 = 1000000000.0;
 const PORT: &str = "6969";
 
+struct SystemUsage<'a> {
+    cpu_usage: f32,
+    memory_usage: f32,
+    system: &'a mut System,
+}
+
+impl<'a> SystemUsage<'a> {
+    fn refresh(&mut self) {
+        let sys = &mut self.system;
+        // thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL); // making sure cpu usage is up to date
+        sys.refresh_all();
+
+        let cpu_usage: f32 = sys.global_cpu_info().cpu_usage() as f32;
+        let memory_usage: f32 = (sys.used_memory() as f32 / GIGABYTE) / (sys.total_memory() as f32 / GIGABYTE) * 100.0;
+        
+        self.cpu_usage = cpu_usage;
+        self.memory_usage = memory_usage;
+    }
+
+    fn show(&self, ctx: &str) {
+        let cpu_usage = self.cpu_usage;
+        let memory_usage = self.memory_usage;
+        println!("{ctx}:");
+        println!("Memory usage: {memory_usage:.2}%"); println!("CPU usage: {cpu_usage:.2}%");
+    }
+}
+
 fn main() {
+    let mut sys = System::new_all();
+    let mut sys = SystemUsage {
+        cpu_usage: sys.global_cpu_info().cpu_usage() as f32,
+        memory_usage: (sys.used_memory() as f32 / GIGABYTE) / (sys.total_memory() as f32 / GIGABYTE) * 100.0,
+        system: &mut sys,
+    };
+    sys.show("Before creating TCP listener");
 
     let ip = get_ip();
 
@@ -18,6 +56,7 @@ fn main() {
     let server = match TcpListener::bind(&ip) {
         Ok(server) => {
             println!("Listening at {ip}");
+            // TODO: memory usage and cpu usage after creating
             server
         },
         Err(_) => {
