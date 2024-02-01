@@ -45,9 +45,9 @@ fn main() {
         memory_usage: (sys.used_memory() as f32 / GIGABYTE) / (sys.total_memory() as f32 / GIGABYTE) * 100.0,
         system: &mut sys,
     };
-    sys.show("Before creating TCP listener");
+    sys.show("Start of program");
 
-    let ip = get_ip();
+    let ip = get_ip(&mut sys);
 
     println!("Creating socket at: {ip}");
 
@@ -56,7 +56,8 @@ fn main() {
     let server = match TcpListener::bind(&ip) {
         Ok(server) => {
             println!("Listening at {ip}");
-            // TODO: memory usage and cpu usage after creating
+            sys.refresh();
+            sys.show("After binding to socket");
             server
         },
         Err(_) => {
@@ -81,11 +82,22 @@ fn main() {
     for connection in server.incoming() {
         match connection {
             Ok(stream) => {
+                sys.refresh();
+                sys.show(format!("After accepting new connection ({} total connection(s)", connections.lock().unwrap().len() + 1).as_str());
                 let addr = stream.peer_addr().expect("Unable to read peer address");
                 let connections_clone = Arc::clone(&connections);
                 thread::spawn(move || {
-                    handle_connection(stream, addr, &connections_clone);
-                }); //maybe rc with all streams so i can send message from one to all
+                    let mut sys = System::new_all();
+                    let mut sys = SystemUsage {
+                        cpu_usage: sys.global_cpu_info().cpu_usage() as f32,
+                        memory_usage: (sys.used_memory() as f32 / GIGABYTE) / (sys.total_memory() as f32 / GIGABYTE) * 100.0,
+                        system: &mut sys,
+                    };
+                    sys.show("After spawning thread");
+                    handle_connection(stream, addr, &connections_clone, &mut sys);
+                    sys.refresh();
+                    sys.show(format!("After closing connection ({} total connection(s)", connections_clone.lock().unwrap().len()).as_str());
+                });
             },
             Err(e) => panic!("{e}"),
         }
@@ -93,7 +105,7 @@ fn main() {
 
 }
 
-fn handle_connection(mut stream: TcpStream, addr: SocketAddr, connections: &Arc<Mutex<Vec<TcpStream>>>) {
+fn handle_connection(mut stream: TcpStream, addr: SocketAddr, connections: &Arc<Mutex<Vec<TcpStream>>>, sys: &mut SystemUsage) {
     println!("Accepted connection from: {addr}");
 
     {
@@ -103,22 +115,31 @@ fn handle_connection(mut stream: TcpStream, addr: SocketAddr, connections: &Arc<
     let mut buffer = [0; 1024];
     loop {
         match stream.read(&mut buffer) {
-            Ok(0) => {println!("Connection has been closed by {addr}"); break},
+            Ok(0) => {
+                println!("Connection has been closed by {addr}");
+                break
+            },
             Ok(n) => {
                 if buffer[0] == 10 && n == 1 { continue }
                 let mut inp = &buffer[0..n];
-                println!("Received {inp:?} from {addr}"); 
-                if inp[n-1] == 10 { inp = inp.strip_suffix(&[10]).unwrap()}
+                // println!("Received {inp:?} from {addr}");
+                println!("Received {n} bytes from {addr}");
+                sys.refresh();
+                sys.show("After receiving data");
 
+                if inp[n-1] == 10 { inp = inp.strip_suffix(&[10]).unwrap()}
                 let out_str = addr.to_string() + ": " + &String::from_utf8(inp.to_vec()).expect("Could not convert to string");
                 let out = out_str.as_bytes();
-                println!("Sending {out:?} from {addr}");
+                // println!("Sending {out:?} from {addr}");
+                println!("Sending {} bytes from {addr}", out.len());
                 let streams = connections.lock().expect("Unable to lock streams");
                 for mut connection in streams.iter() {
                     if connection.peer_addr().unwrap() != addr {
                         connection.write_all(out).unwrap();
                     }
                 }
+                sys.refresh();
+                sys.show(format!("After sending data (to {} client(s)", streams.len() - 1).as_str());
             }
             Err(e) => {
                 eprintln!("Error reading from socket: {e}");
@@ -129,12 +150,14 @@ fn handle_connection(mut stream: TcpStream, addr: SocketAddr, connections: &Arc<
 
     {
         connections.lock().unwrap().retain(|streams| {
-            addr != streams.peer_addr().expect("Could not retrieve peer address") // temp fix?
+            addr != streams.peer_addr().expect("Could not retrieve peer address")
         });
     }
 }
 
-fn get_ip() -> String {
+fn get_ip(sys: &mut SystemUsage) -> String {
+    sys.refresh();
+    sys.show("Before getting IP from args");
     let args: Vec<String> = args().collect();
     let mut ip: String;
 
@@ -161,5 +184,7 @@ fn get_ip() -> String {
         ip += PORT;
         println!("No port number provided, using 6969");
     }
+    sys.refresh();
+    sys.show("After getting IP from args (and parsing)");
     ip
 }
