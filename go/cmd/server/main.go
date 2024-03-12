@@ -8,6 +8,10 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
+
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/mem"
 )
 
 type connectionManager struct {
@@ -15,10 +19,34 @@ type connectionManager struct {
 	mux         sync.Mutex
 }
 
+type SystemUsage struct {
+	cpu float64
+	mem float64
+}
+
+func refresh(sys *SystemUsage) {
+	v, _ := mem.VirtualMemory()
+	c, _ := cpu.Percent(time.Second, false)
+	sys.cpu = c[0]
+	sys.mem = v.UsedPercent
+
+}
+
+func show(sys *SystemUsage, ctx string) {
+	fmt.Println(ctx)
+	fmt.Printf("Memory usage: %.2f%%\n", sys.mem)
+	fmt.Printf("CPU usage: %.2f%%\n", sys.cpu)
+}
+
 func main() {
 	var wg sync.WaitGroup
 
 	var ip = get_ip()
+
+	var sys SystemUsage
+
+	refresh(&sys)
+	show(&sys, "Initial")
 
 	cm := &connectionManager{}
 
