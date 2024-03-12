@@ -7,7 +7,6 @@ use std::net::Ipv4Addr;
 
 use sysinfo::System;
 
-const GIGABYTE: f32 = 1000000000.0;
 const PORT: &str = "6969";
 
 struct SystemUsage<'a> {
@@ -22,8 +21,8 @@ impl<'a> SystemUsage<'a> {
         thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL); // making sure cpu usage is up to date
         sys.refresh_all();
 
-        let cpu_usage: f32 = sys.global_cpu_info().cpu_usage() as f32;
-        let memory_usage: f32 = (sys.used_memory() as f32 / GIGABYTE) / (sys.total_memory() as f32 / GIGABYTE) * 100.0;
+        let cpu_usage: f32 = sys.global_cpu_info().cpu_usage();
+        let memory_usage: f32 = (sys.used_memory() as f32) / (sys.total_memory() as f32) * 100.0;
         
         self.cpu_usage = cpu_usage;
         self.memory_usage = memory_usage;
@@ -40,8 +39,8 @@ impl<'a> SystemUsage<'a> {
 fn main() {
     let mut sys = System::new_all();
     let mut sys = SystemUsage {
-        cpu_usage: sys.global_cpu_info().cpu_usage() as f32,
-        memory_usage: (sys.used_memory() as f32 / GIGABYTE) / (sys.total_memory() as f32 / GIGABYTE) * 100.0,
+        cpu_usage: sys.global_cpu_info().cpu_usage(),
+        memory_usage: (sys.used_memory() as f32) / (sys.total_memory() as f32) * 100.0,
         system: &mut sys,
     };
     sys.show("Start of program");
@@ -62,9 +61,8 @@ fn main() {
         Err(_) => {
             println!("Could not create a socket at {ip}, trying a different port");
             let mut new_ip: String;
-            let port: usize;
-            new_ip = ip.split(":").next().expect("IP is invalid").to_string() + ":"; 
-            port = ip.split(":").nth(1).expect("Port is invalid").parse::<usize>().expect("Port is not a number") + 1;
+            new_ip = ip.split(':').next().expect("IP is invalid").to_string() + ":"; 
+            let port = ip.split(':').nth(1).expect("Port is invalid").parse::<usize>().expect("Port is not a number") + 1;
             new_ip += port.to_string().as_str();
 
             println!("Creating socket at: {new_ip}");
@@ -88,8 +86,8 @@ fn main() {
                 thread::spawn(move || {
                     let mut sys = System::new_all();
                     let mut sys = SystemUsage {
-                        cpu_usage: sys.global_cpu_info().cpu_usage() as f32,
-                        memory_usage: (sys.used_memory() as f32 / GIGABYTE) / (sys.total_memory() as f32 / GIGABYTE) * 100.0,
+                        cpu_usage: sys.global_cpu_info().cpu_usage(),
+                        memory_usage: (sys.used_memory() as f32) / (sys.total_memory() as f32) * 100.0,
                         system: &mut sys,
                     };
                     sys.refresh();
@@ -121,13 +119,7 @@ fn handle_connection(mut stream: TcpStream, addr: SocketAddr, connections: &Arc<
             },
             Ok(n) => {
                 println!("Received {n} bytes from {addr}");
-                let out_str = match generate_output(n, &buffer, addr) {
-                    Ok(out) => out,
-                    Err(_) => {
-                        println!("Received exit command from {addr}");
-                        break
-                    }
-                };
+                let Ok(out_str) = generate_output(n, &buffer, addr) else { continue };
                 let out = out_str.as_bytes();
 
                 sys.refresh();
