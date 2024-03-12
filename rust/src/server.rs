@@ -5,8 +5,6 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::net::Ipv4Addr;
 
-// use self::bench::SystemUsage; // TODO: fix this
-
 use sysinfo::System;
 
 const GIGABYTE: f32 = 1000000000.0;
