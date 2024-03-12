@@ -122,17 +122,19 @@ fn handle_connection(mut stream: TcpStream, addr: SocketAddr, connections: &Arc<
                 break
             },
             Ok(n) => {
-                if buffer[0] == 10 && n == 1 { continue }
-                let mut inp = &buffer[0..n];
-                // println!("Received {inp:?} from {addr}");
                 println!("Received {n} bytes from {addr}");
-                sys.refresh();
-                sys.show("After receiving data");
-
-                if inp[n-1] == 10 { inp = inp.strip_suffix(&[10]).unwrap()}
-                let out_str = addr.to_string() + ": " + &String::from_utf8(inp.to_vec()).expect("Could not convert to string");
+                let out_str = match generate_output(n, &buffer, addr) {
+                    Ok(out) => out,
+                    Err(_) => {
+                        println!("Received exit command from {addr}");
+                        break
+                    }
+                };
                 let out = out_str.as_bytes();
-                // println!("Sending {out:?} from {addr}");
+
+                sys.refresh();
+                sys.show("After receiving and parsing data");
+
                 println!("Sending {} bytes from {addr}", out.len());
                 let streams = connections.lock().expect("Unable to lock streams");
                 for mut connection in streams.iter() {
@@ -155,6 +157,15 @@ fn handle_connection(mut stream: TcpStream, addr: SocketAddr, connections: &Arc<
             addr != streams.peer_addr().expect("Could not retrieve peer address")
         });
     }
+}
+
+fn generate_output(n: usize, buffer: &[u8; 1024], addr: SocketAddr) -> Result<String, ()> {
+    if buffer[0] == 10 && n == 1 { return Err(()) }
+    let mut inp = &buffer[0..n];
+    
+    if inp[n-1] == 10 { inp = inp.strip_suffix(&[10]).unwrap()}
+    let out = addr.to_string() + ": " + &String::from_utf8(inp.to_vec()).expect("Could not convert to string");
+    Ok(out)
 }
 
 fn get_ip(sys: &mut SystemUsage) -> String {
