@@ -100,7 +100,7 @@ func handleConnection(conn net.Conn, wg *sync.WaitGroup, cm *connectionManager, 
 
 	fmt.Println("Accepted connection from:", conn.RemoteAddr())
 
-	buffer := make([]byte, 256)
+	buffer := make([]byte, 1024)
 
 	for {
 		n, err := conn.Read(buffer)
@@ -128,12 +128,11 @@ func handleConnection(conn net.Conn, wg *sync.WaitGroup, cm *connectionManager, 
 				continue
 			}
 			refresh(sys)
-			show(sys, "After receiving data")
-
+			show(sys, "After receiving and parsing data")
 			fmt.Printf("Sending %d bytes from %s\n", len(out), conn.RemoteAddr().String())
 			for _, connection := range cm.connections {
 				if conn.RemoteAddr() != connection.RemoteAddr() {
-					_, err = connection.Write(out)
+					_, err = connection.Write([]byte(out))
 					if err != nil {
 						fmt.Println("Error writing to client:", err)
 					}
@@ -145,9 +144,9 @@ func handleConnection(conn net.Conn, wg *sync.WaitGroup, cm *connectionManager, 
 	}
 }
 
-func generateOutput(n int, buffer []byte, conn net.Conn) ([]byte, bool) {
-	if n == 1 && buffer[n-1] == 10 {
-		return []byte(""), false
+func generateOutput(n int, buffer []byte, conn net.Conn) (string, bool) {
+	if n == 1 && buffer[0] == 10 {
+		return "", false
 	}
 
 	var output []byte
@@ -159,7 +158,7 @@ func generateOutput(n int, buffer []byte, conn net.Conn) ([]byte, bool) {
 	} else {
 		output = append(output, buffer[:n]...)
 	}
-	return output, true
+	return string(output), true
 }
 
 func get_ip(sys *SystemUsage) string {
