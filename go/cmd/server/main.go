@@ -24,6 +24,7 @@ type SystemUsage struct {
 	mem float64
 }
 
+// TODO: Find a way to not need to sleep for time.Second
 func refresh(sys *SystemUsage) {
 	v, _ := mem.VirtualMemory()
 	c, _ := cpu.Percent(time.Second, false)
@@ -41,12 +42,11 @@ func show(sys *SystemUsage, ctx string) {
 func main() {
 	var wg sync.WaitGroup
 
-	var ip = get_ip()
-
 	var sys SystemUsage
-
 	refresh(&sys)
-	show(&sys, "Initial")
+	show(&sys, "Start of program")
+
+	var ip = get_ip(&sys)
 
 	cm := &connectionManager{}
 
@@ -67,6 +67,8 @@ func main() {
 			return
 		}
 	}
+	refresh(&sys)
+	show(&sys, "After binding to socket")
 	fmt.Println("Listening at", ip)
 	defer stream.Close()
 
@@ -80,13 +82,22 @@ func main() {
 		cm.connections = append(cm.connections, conn)
 		wg.Add(1)
 		cm.mux.Unlock()
-		go handleConnection(conn, &wg, cm)
-
+		go handleConnection(conn, &wg, cm, &sys)
+		refresh(&sys)
+		show(&sys, fmt.Sprintf("After accepting new connection (%d total connection(s))", len(cm.connections)))
 	}
 }
 
-func handleConnection(conn net.Conn, wg *sync.WaitGroup, cm *connectionManager) {
+func handleConnection(conn net.Conn, wg *sync.WaitGroup, cm *connectionManager, sys *SystemUsage) {
+	refresh(sys)
+	show(sys, "After spawning goroutine")
+
+	// reverse order because defer works opposite
+	defer show(sys, fmt.Sprintf("After closing connection (%d total connection(s))", len(cm.connections)))
+	defer refresh(sys)
+
 	defer wg.Done()
+
 	fmt.Println("Accepted connection from:", conn.RemoteAddr())
 
 	buffer := make([]byte, 256)
@@ -110,13 +121,16 @@ func handleConnection(conn net.Conn, wg *sync.WaitGroup, cm *connectionManager) 
 			cm.mux.Unlock()
 			return
 		}
-		fmt.Println("Received", buffer[:n], "from", conn.RemoteAddr())
+		fmt.Printf("Received %d bytes from %s\n", n, conn.RemoteAddr().String())
 		if n != 0 {
 			out, valid := generateOutput(n, buffer, conn)
 			if !valid {
 				continue
 			}
-			fmt.Println("Sending", out, "from", conn.RemoteAddr())
+			refresh(sys)
+			show(sys, "After receiving data")
+
+			fmt.Printf("Sending %d bytes from %s\n", len(out), conn.RemoteAddr().String())
 			for _, connection := range cm.connections {
 				if conn.RemoteAddr() != connection.RemoteAddr() {
 					_, err = connection.Write(out)
@@ -125,13 +139,14 @@ func handleConnection(conn net.Conn, wg *sync.WaitGroup, cm *connectionManager) 
 					}
 				}
 			}
+			refresh(sys)
+			show(sys, fmt.Sprintf("After sending data to %d client(s)", len(cm.connections)-1))
 		}
 	}
 }
 
 func generateOutput(n int, buffer []byte, conn net.Conn) ([]byte, bool) {
-	fmt.Println(buffer[n], "or", buffer[n-1])
-	if n == 1 && buffer[n] == 10 {
+	if n == 1 && buffer[n-1] == 10 {
 		return []byte(""), false
 	}
 
@@ -147,7 +162,9 @@ func generateOutput(n int, buffer []byte, conn net.Conn) ([]byte, bool) {
 	return output, true
 }
 
-func get_ip() string {
+func get_ip(sys *SystemUsage) string {
+	refresh(sys)
+	show(sys, "Before getting IP from args")
 	var ip []string // socket not ip
 	var args = os.Args[1:]
 
@@ -178,7 +195,8 @@ func get_ip() string {
 			ip = append(ip, ":6969")
 		}
 	}
-
+	refresh(sys)
+	show(sys, "After getting IP from args (and parsing)")
 	return string(strings.Join(ip, ""))
 
 }
