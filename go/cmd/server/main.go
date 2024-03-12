@@ -24,10 +24,10 @@ type SystemUsage struct {
 	mem float64
 }
 
-// TODO: Find a way to not need to sleep for time.Second
+// The reason the interval is 200ms is because in the Rust implementation, the library used also uses 200ms because of the OS.
 func refresh(sys *SystemUsage) {
 	v, _ := mem.VirtualMemory()
-	c, _ := cpu.Percent(time.Second, false)
+	c, _ := cpu.Percent(time.Millisecond*200, false)
 	sys.cpu = c[0]
 	sys.mem = v.UsedPercent
 

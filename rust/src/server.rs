@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::net::Ipv4Addr;
 
+// use self::bench::SystemUsage; // TODO: fix this
 
 use sysinfo::System;
 
@@ -20,7 +21,7 @@ struct SystemUsage<'a> {
 impl<'a> SystemUsage<'a> {
     fn refresh(&mut self) {
         let sys = &mut self.system;
-        // thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL); // making sure cpu usage is up to date
+        thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL); // making sure cpu usage is up to date
         sys.refresh_all();
 
         let cpu_usage: f32 = sys.global_cpu_info().cpu_usage() as f32;
@@ -83,7 +84,7 @@ fn main() {
         match connection {
             Ok(stream) => {
                 sys.refresh();
-                sys.show(format!("After accepting new connection ({} total connection(s)", connections.lock().unwrap().len() + 1).as_str());
+                sys.show(format!("After accepting new connection ({} total connection(s))", connections.lock().unwrap().len() + 1).as_str());
                 let addr = stream.peer_addr().expect("Unable to read peer address");
                 let connections_clone = Arc::clone(&connections);
                 thread::spawn(move || {
@@ -93,6 +94,7 @@ fn main() {
                         memory_usage: (sys.used_memory() as f32 / GIGABYTE) / (sys.total_memory() as f32 / GIGABYTE) * 100.0,
                         system: &mut sys,
                     };
+                    sys.refresh();
                     sys.show("After spawning thread");
                     handle_connection(stream, addr, &connections_clone, &mut sys);
                     sys.refresh();
@@ -139,7 +141,7 @@ fn handle_connection(mut stream: TcpStream, addr: SocketAddr, connections: &Arc<
                     }
                 }
                 sys.refresh();
-                sys.show(format!("After sending data (to {} client(s)", streams.len() - 1).as_str());
+                sys.show(format!("After sending data to {} client(s)", streams.len() - 1).as_str());
             }
             Err(e) => {
                 eprintln!("Error reading from socket: {e}");
