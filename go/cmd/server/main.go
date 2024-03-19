@@ -176,8 +176,8 @@ func get_ip(sys *SystemUsage) string {
 			ip = append(ip, "127.0.0.1")
 		}
 	} else {
-		fmt.Println("No arguments have been passed, using 127.0.0.1:6969")
-		ip = append(ip, "127.0.0.1:6969")
+		fmt.Println("No arguments have been passed, using 127.0.0.1:8000")
+		ip = append(ip, "127.0.0.1:8000")
 	}
 
 	if len(args) > 1 {
@@ -186,12 +186,12 @@ func get_ip(sys *SystemUsage) string {
 			if err == nil && port >= 2000 && port <= 65535 { // 2000 because others are reserved (prob)
 				ip = append(ip, ":"+args[1])
 			} else {
-				fmt.Println("Invalid port number provided, using 6969")
-				ip = append(ip, ":6969")
+				fmt.Println("Invalid port number provided, using 8000")
+				ip = append(ip, ":8000")
 			}
 		} else {
-			fmt.Println("No port number provided, using 6969")
-			ip = append(ip, ":6969")
+			fmt.Println("No port number provided, using 8000")
+			ip = append(ip, ":8000")
 		}
 	}
 	refresh(sys)
