@@ -18,8 +18,9 @@ struct SystemUsage<'a> {
 impl<'a> SystemUsage<'a> {
     fn refresh(&mut self) {
         let sys = &mut self.system;
+        sys.refresh_cpu_usage();
         thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL); // making sure cpu usage is up to date
-        sys.refresh_all();
+        sys.refresh_cpu_usage();
 
         let cpu_usage: f32 = sys.global_cpu_info().cpu_usage();
         let memory_usage: f32 = (sys.used_memory() as f32) / (sys.total_memory() as f32) * 100.0;
@@ -43,6 +44,7 @@ fn main() {
         memory_usage: (sys.used_memory() as f32) / (sys.total_memory() as f32) * 100.0,
         system: &mut sys,
     };
+    sys.refresh();
     sys.show("Start of program");
 
     let ip = get_ip(&mut sys);
