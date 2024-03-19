@@ -5,10 +5,11 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::net::Ipv4Addr;
 
-const PORT: &str = "6969";
+
+const PORT: &str = "8000";
+
 
 fn main() {
-
     let ip = get_ip();
 
     println!("Creating socket at: {ip}");
@@ -23,9 +24,8 @@ fn main() {
         Err(_) => {
             println!("Could not create a socket at {ip}, trying a different port");
             let mut new_ip: String;
-            let port: usize;
-            new_ip = ip.split(":").next().expect("IP is invalid").to_string() + ":"; 
-            port = ip.split(":").nth(1).expect("Port is invalid").parse::<usize>().expect("Port is not a number") + 1;
+            new_ip = ip.split(':').next().expect("IP is invalid").to_string() + ":"; 
+            let port = ip.split(':').nth(1).expect("Port is invalid").parse::<usize>().expect("Port is not a number") + 1;
             new_ip += port.to_string().as_str();
 
             println!("Creating socket at: {new_ip}");
@@ -46,7 +46,7 @@ fn main() {
                 let connections_clone = Arc::clone(&connections);
                 thread::spawn(move || {
                     handle_connection(stream, addr, &connections_clone);
-                }); //maybe rc with all streams so i can send message from one to all
+                });
             },
             Err(e) => panic!("{e}"),
         }
@@ -64,16 +64,17 @@ fn handle_connection(mut stream: TcpStream, addr: SocketAddr, connections: &Arc<
     let mut buffer = [0; 1024];
     loop {
         match stream.read(&mut buffer) {
-            Ok(0) => {println!("Connection has been closed by {addr}"); break},
+            Ok(0) => {
+                println!("Connection has been closed by {addr}");
+                break
+            },
             Ok(n) => {
-                if buffer[0] == 10 && n == 1 { continue }
-                let mut inp = &buffer[0..n];
-                println!("Received {inp:?} from {addr}"); 
-                if inp[n-1] == 10 { inp = inp.strip_suffix(&[10]).unwrap()}
-
-                let out_str = addr.to_string() + ": " + &String::from_utf8(inp.to_vec()).expect("Could not convert to string");
+                println!("Received {n} bytes from {addr}");
+                let Ok(out_str) = generate_output(n, &buffer, addr) else { continue };
                 let out = out_str.as_bytes();
-                println!("Sending {out:?} from {addr}");
+
+
+                println!("Sending {} bytes from {addr}", out.len());
                 let streams = connections.lock().expect("Unable to lock streams");
                 for mut connection in streams.iter() {
                     if connection.peer_addr().unwrap() != addr {
@@ -90,9 +91,18 @@ fn handle_connection(mut stream: TcpStream, addr: SocketAddr, connections: &Arc<
 
     {
         connections.lock().unwrap().retain(|streams| {
-            addr != streams.peer_addr().expect("Could not retrieve peer address") // temp fix?
+            addr != streams.peer_addr().expect("Could not retrieve peer address")
         });
     }
+}
+
+fn generate_output(n: usize, buffer: &[u8; 1024], addr: SocketAddr) -> Result<String, ()> {
+    if buffer[0] == 10 && n == 1 { return Err(()) }
+    let mut inp = &buffer[0..n];
+    
+    if inp[n-1] == 10 { inp = inp.strip_suffix(&[10]).unwrap()}
+    let out = addr.to_string() + ": " + &String::from_utf8(inp.to_vec()).expect("Could not convert to string");
+    Ok(out)
 }
 
 fn get_ip() -> String {
@@ -116,11 +126,11 @@ fn get_ip() -> String {
             ip += &port_number.to_string();
         } else {
             ip += PORT;
-            println!("Invalid port number provided, using 6969");
+            println!("Invalid port number provided, using 8000");
         }
     } else {
         ip += PORT;
-        println!("No port number provided, using 6969");
+        println!("No port number provided, using 8000");
     }
     ip
 }
