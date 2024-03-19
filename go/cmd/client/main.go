@@ -25,15 +25,12 @@ func main() {
 	conn, err := net.Dial("tcp", ip)
 	if err != nil {
 		fmt.Println("Error connecting to server: ", err)
+		return
 	}
 	defer conn.Close() // close connection when program terminated.
 
 	fmt.Println("Connected to server at:", conn.RemoteAddr())
 
-	if err != nil {
-		fmt.Println("Error sending message:", err)
-		return
-	}
 	go readStream(conn, &wg)
 	go handleInput(conn, &wg)
 	wg.Wait()
