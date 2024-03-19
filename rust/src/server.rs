@@ -7,7 +7,7 @@ use std::net::Ipv4Addr;
 
 use sysinfo::System;
 
-const PORT: &str = "6969";
+const PORT: &str = "8000";
 
 struct SystemUsage<'a> {
     cpu_usage: f32,
@@ -181,11 +181,11 @@ fn get_ip(sys: &mut SystemUsage) -> String {
             ip += &port_number.to_string();
         } else {
             ip += PORT;
-            println!("Invalid port number provided, using 6969");
+            println!("Invalid port number provided, using 8000");
         }
     } else {
         ip += PORT;
-        println!("No port number provided, using 6969");
+        println!("No port number provided, using 8000");
     }
     sys.refresh();
     sys.show("After getting IP from args (and parsing)");
