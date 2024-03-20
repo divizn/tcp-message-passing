@@ -53,7 +53,6 @@ func main() {
 		wg.Add(1)
 		cm.mux.Unlock()
 		go handleConnection(conn, &wg, cm)
-
 	}
 }
 
@@ -61,7 +60,7 @@ func handleConnection(conn net.Conn, wg *sync.WaitGroup, cm *connectionManager) 
 	defer wg.Done()
 	fmt.Println("Accepted connection from:", conn.RemoteAddr())
 
-	buffer := make([]byte, 256)
+	buffer := make([]byte, 1024)
 
 	for {
 		n, err := conn.Read(buffer)
@@ -82,16 +81,16 @@ func handleConnection(conn net.Conn, wg *sync.WaitGroup, cm *connectionManager) 
 			cm.mux.Unlock()
 			return
 		}
-		fmt.Println("Received", buffer[:n], "from", conn.RemoteAddr())
+		fmt.Printf("Received %d bytes from %s\n", n, conn.RemoteAddr().String())
 		if n != 0 {
 			out, valid := generateOutput(n, buffer, conn)
 			if !valid {
 				continue
 			}
-			fmt.Println("Sending", out, "from", conn.RemoteAddr())
+			fmt.Printf("Sending %d bytes from %s\n", len(out), conn.RemoteAddr().String())
 			for _, connection := range cm.connections {
 				if conn.RemoteAddr() != connection.RemoteAddr() {
-					_, err = connection.Write(out)
+					_, err = connection.Write([]byte(out))
 					if err != nil {
 						fmt.Println("Error writing to client:", err)
 					}
@@ -101,10 +100,9 @@ func handleConnection(conn net.Conn, wg *sync.WaitGroup, cm *connectionManager) 
 	}
 }
 
-func generateOutput(n int, buffer []byte, conn net.Conn) ([]byte, bool) {
-	fmt.Println(buffer[n], "or", buffer[n-1])
-	if n == 1 && buffer[n] == 10 {
-		return []byte(""), false
+func generateOutput(n int, buffer []byte, conn net.Conn) (string, bool) {
+	if n == 1 && buffer[0] == 10 {
+		return "", false
 	}
 
 	var output []byte
@@ -116,7 +114,7 @@ func generateOutput(n int, buffer []byte, conn net.Conn) ([]byte, bool) {
 	} else {
 		output = append(output, buffer[:n]...)
 	}
-	return output, true
+	return string(output), true
 }
 
 func get_ip() string {
@@ -132,8 +130,8 @@ func get_ip() string {
 			ip = append(ip, "127.0.0.1")
 		}
 	} else {
-		fmt.Println("No arguments have been passed, using 127.0.0.1:6969")
-		ip = append(ip, "127.0.0.1:6969")
+		fmt.Println("No arguments have been passed, using 127.0.0.1:8000")
+		ip = append(ip, "127.0.0.1:8000")
 	}
 
 	if len(args) > 1 {
@@ -142,15 +140,14 @@ func get_ip() string {
 			if err == nil && port >= 2000 && port <= 65535 { // 2000 because others are reserved (prob)
 				ip = append(ip, ":"+args[1])
 			} else {
-				fmt.Println("Invalid port number provided, using 6969")
-				ip = append(ip, ":6969")
+				fmt.Println("Invalid port number provided, using 8000")
+				ip = append(ip, ":8000")
 			}
 		} else {
-			fmt.Println("No port number provided, using 6969")
-			ip = append(ip, ":6969")
+			fmt.Println("No port number provided, using 8000")
+			ip = append(ip, ":8000")
 		}
 	}
-
 	return string(strings.Join(ip, ""))
 
 }
