@@ -45,6 +45,7 @@ fn main() {
         system: &mut sys,
     };
     sys.refresh();
+    sys.refresh(); // necessary for accuracy
     sys.show("Start of program");
 
     let ip = get_ip(&mut sys);
